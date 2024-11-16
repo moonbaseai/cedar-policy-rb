@@ -5,6 +5,10 @@ module CedarPolicy
   class Entities
     include Enumerable
 
+    # This is a hack to work around the current pathway for building the rust Entities object
+    # in TryConvert, where we can't easily pass Schema to the Entities::from_json_value fn.
+    attr_accessor :schema
+
     def initialize(entities = [])
       @entities = Set.new(entities.map do |entity|
         next entity if entity.is_a?(Entity)
