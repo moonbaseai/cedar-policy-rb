@@ -77,6 +77,13 @@ entities = CedarPolicy::Entities.new([
 ])
 ```
 
+You can optionally pass a schema to `Entities.new`, which will allow Cedar to evaluate action groups:
+
+```ruby
+schema = CedarPolicy::Schema.new(schema_in_cedar_format)
+entities = CedarPolicy::Entities.new(entities_array, schema: schema)
+```
+
 ### Authorizer
 
 Create an `Authorizer` object and authorize the request with the policy set and entities.

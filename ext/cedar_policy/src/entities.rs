@@ -31,28 +31,20 @@ impl TryConvert for EntitiesWrapper {
                 if schema.is_nil() {
                     None
                 } else {
-                let schema = <&RSchema>::try_convert(schema)?;
-                let schema: Schema = schema.into();
-                Some(schema)
+                    let r_schema = <&RSchema>::try_convert(schema)?;
+                    let schema: Schema = r_schema.into();
+                    Some(schema)
                 }
             },
-            _ => None
+            _ => {
+                None
+            }
         };
         match value.respond_to("to_ary", false) {
             Ok(true) => {
-                // let schema = value.funcall_public("schema", ())?;
-                // let schema = <&RSchema>::try_convert(schema)?;
-                // let schema: Schema = schema.into();
                 let value: Value = value.funcall_public("to_ary", ())?;
                 let value: JsonValueWithNoDuplicateKeys = deserialize(value)?;
-                // Ok(Self(
-                //     Entities::from_json_value(value.into(), Some(&schema))
-                //         .map_err(|e| Error::new(handle.exception_arg_error(), e.to_string()))?,
-                // ))
-                let entities = match schema {
-                    Some(schema) => Entities::from_json_value(value.into(), Some(&schema)),
-                    None => Entities::from_json_value(value.into(), None)
-                };
+                let entities = Entities::from_json_value(value.into(), schema.as_ref());
                 Ok(Self(
                     entities.map_err(|e| Error::new(handle.exception_arg_error(), e.to_string()))?,
                 ))

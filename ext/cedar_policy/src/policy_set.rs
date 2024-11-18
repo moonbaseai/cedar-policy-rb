@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use cedar_policy::{ParseErrors, PolicySet};
-use magnus::{function, method, scan_args::scan_args, Error, Module, Object, RModule, Ruby, Value};
+use magnus::{function, method, scan_args::scan_args, Error, Module, Object, RArray, RModule, Ruby, Value};
 
 use crate::error::PARSE_ERROR;
 
@@ -23,6 +23,10 @@ impl RPolicySet {
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    fn policies(&self) -> RArray {
+        RArray::from_iter(self.0.policies().map(|policy| policy.to_string()))
+    }
 }
 
 impl From<&RPolicySet> for PolicySet {
@@ -43,6 +47,7 @@ pub fn init(ruby: &Ruby, module: &RModule) -> Result<(), Error> {
     let class = module.define_class("PolicySet", ruby.class_object())?;
     class.define_singleton_method("new", function!(RPolicySet::new, -1))?;
     class.define_method("empty?", method!(RPolicySet::is_empty, 0))?;
+    class.define_method("policies", method!(RPolicySet::policies, 0))?;
 
     Ok(())
 }

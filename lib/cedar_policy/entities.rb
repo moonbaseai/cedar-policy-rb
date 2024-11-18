@@ -5,16 +5,20 @@ module CedarPolicy
   class Entities
     include Enumerable
 
-    # This is a hack to work around the current pathway for building the rust Entities object
-    # in TryConvert, where we can't easily pass Schema to the Entities::from_json_value fn.
+    # Include schema in Entities to enable Cedar to evaluate Action groups.
     attr_accessor :schema
 
-    def initialize(entities = [])
+    def initialize(entities = [], schema: nil)
       @entities = Set.new(entities.map do |entity|
         next entity if entity.is_a?(Entity)
 
         Entity.new(*entity.values_at(:uid, :attrs, :parents))
       end)
+
+      if schema
+        schema = Schema.new(schema) unless schema.is_a?(Schema)
+        self.schema = schema
+      end
     end
 
     def each(&block)
