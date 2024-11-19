@@ -172,5 +172,169 @@ RSpec.describe CedarPolicy::Request do
         is_expected.to have_attributes(diagnostics: have_attributes(errors: be_none))
       }
     end
+
+    context "when there is schema attached to entities" do
+      subject { authorizer.authorize(request, policy_set, entities) }
+
+      let(:policy) do
+        <<~POLICY
+          @id("Any user can View")
+          permit(
+            principal is User,
+            action == Action::"View",
+            resource
+          );
+
+          @id("Owner can Edit")
+          permit(
+            principal is User,
+            action == Action::"Edit",
+            resource
+          ) when { resource.owner == principal };
+
+          @id("Users with isAdmin=true can Delete")
+          permit(
+            principal,
+            action in Action::"AdminActions",
+            resource
+          ) when { principal has isAdmin && principal.isAdmin };
+        POLICY
+      end
+
+      let(:schema) do
+        <<~SCHEMA
+          entity User {
+            isAdmin?: Bool
+          };
+
+          entity Image {
+            owner: User
+          };
+
+          action AdminActions;
+
+          action View in [AdminActions] appliesTo {
+              principal: [User],
+              resource: [Image]
+          };
+
+          action Edit in [AdminActions] appliesTo {
+              principal: [User],
+              resource: [Image]
+          };
+
+          action Delete in [AdminActions] appliesTo {
+              principal: [User],
+              resource: [Image]
+          };
+        SCHEMA
+      end
+
+      let(:entities) do
+        CedarPolicy::Entities.new(entities_data, schema: schema)
+      end
+
+      describe "User can View image" do
+        let(:action) { CedarPolicy::EntityUid.new("Action", "View") }
+        let(:entities_data) {
+          [
+            {
+              uid: { type: "User", id: 1 }, attrs: {}, parents: []
+            },
+            {
+              uid: { type: "Image", id: 1 },
+              attrs: { owner: { type: "User", id:" 1" } },
+              parents: []
+            }
+          ]
+        }
+
+        it { is_expected.to have_attributes(decision: CedarPolicy::Decision::ALLOW) }
+      end
+
+      describe "Owner can Edit image" do
+        let(:action) { CedarPolicy::EntityUid.new("Action", "Edit") }
+        let(:entities_data) {
+          [
+            {
+              uid: { type: "User", id: "1" }, attrs: {}, parents: []
+            },
+            {
+              uid: { type: "Image", id: "1" },
+              attrs: { owner: { type: "User", id: "1" } },
+              parents: []
+            }
+          ]
+        }
+
+        it { is_expected.to have_attributes(decision: CedarPolicy::Decision::ALLOW) }
+      end
+
+      describe "Non-Owner cannot Edit image" do
+        let(:principal) { CedarPolicy::EntityUid.new("User", "3") }
+        let(:action) { CedarPolicy::EntityUid.new("Action", "Edit") }
+        let(:entities_data) {
+          [
+            {
+              uid: { type: "User", id: "1" }, attrs: {}, parents: []
+            },
+            {
+              uid: { type: "User", id: "3" }, attrs: {}, parents: []
+            },
+            {
+              uid: { type: "Image", id: "1" },
+              attrs: { owner: { type: "User", id:" 1" } },
+              parents: []
+            }
+          ]
+        }
+
+        it { is_expected.to have_attributes(decision: CedarPolicy::Decision::DENY) }
+      end
+
+      describe "Admin can Delete image" do
+        let(:principal) { CedarPolicy::EntityUid.new("User", "2") }
+        let(:action) { CedarPolicy::EntityUid.new("Action", "Delete") }
+        let(:entities_data) {
+          [
+            {
+              uid: { type: "User", id: "1" }, attrs: {}, parents: []
+            },
+            {
+              uid: { type: "User", id: "2" }, attrs: { isAdmin: true }, parents: []
+            },
+            {
+              uid: { type: "Image", id: "1" },
+              attrs: { owner: { type: "User", id:" 1" } },
+              parents: []
+            }
+          ]
+        }
+
+        it { is_expected.to have_attributes(decision: CedarPolicy::Decision::ALLOW) }
+      end
+
+      describe "#diagnostics.reason reports id of rule allowing access" do
+        let(:policy_set) { CedarPolicy::PolicySet.new(policy, id_annotation: :id) }
+
+        subject { authorizer.authorize(request, policy_set, entities).diagnostics }
+
+        let(:action) { CedarPolicy::EntityUid.new("Action", "Edit") }
+        let(:entities_data) {
+          [
+            {
+              uid: { type: "User", id: "1" }, attrs: {}, parents: []
+            },
+            {
+              uid: { type: "Image", id: "1" },
+              attrs: { owner: { type: "User", id: "1" } },
+              parents: []
+            }
+          ]
+        }
+
+        it { is_expected.to have_attributes(reason: ["Owner can Edit"]) }
+      end
+    end
   end
 end

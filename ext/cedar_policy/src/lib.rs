@@ -7,7 +7,9 @@ mod diagnostics;
 mod entities;
 mod entity_uid;
 mod error;
+mod policy;
 mod policy_set;
+mod schema;
 mod request;
 mod response;
 
@@ -26,6 +28,8 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     authorizer::init(ruby, &module)?;
     request::init(ruby, &module)?;
     response::init(ruby)?;
+    schema::init(ruby, &module)?;
+    policy::init(ruby, &module)?;
     policy_set::init(ruby, &module)?;
 
     Ok(())
