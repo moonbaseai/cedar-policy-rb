@@ -35,6 +35,20 @@ policy_set = CedarPolicy::PolicySet.new(policy)
 
 > Currently, the single policy is not supported.
 
+If your policies have an annotation that should be preferred as their policy ids, you can pass the name of that annotation with the `id_annotation:` keyword argument.
+
+```ruby
+policy = <<~POLICY
+          @id("AdminUser 1 can view any resource")
+          permit(
+            principal == AdminUser::"1",
+            action == Action::"view",
+            resource
+          );
+        POLICY
+policy_set = CedarPolicy::PolicySet.new(policy, id_annotation: :id)
+```
+
 ### Request
 
 Prepare the Entity's ID via `EntityUid` or an object with `#to_hash` method which returns a hash with `:type` and `:id` keys.
